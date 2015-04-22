@@ -1,18 +1,17 @@
 /*
  * (C) Copyright 2014 Java Test Automation Framework Contributors.
- *
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * 
  */
 package org.finra.jtaf.core.parsing;
 
@@ -68,7 +67,8 @@ import au.com.bytecode.opencsv.CSVReader;
  * this class as soon as I get the chance. (I mean... ay ay ay! This is bad!)
  * 
  */
-public class ScriptParser {
+public class ScriptParser
+{
 
     static Logger logger = Logger.getLogger(ScriptParser.class.getPackage().getName());
     private final DocumentBuilder db;
@@ -77,85 +77,110 @@ public class ScriptParser {
     private Document d;
     private CommandRegistry commandRegistry;
 
-	private List<IPostParseSuitePlugin> postParseSuitePlugins;
-	private List<IPostParseTestPlugin> postParseTestPlugins;
-    
+    private List<IPostParseSuitePlugin> postParseSuitePlugins;
+    private List<IPostParseTestPlugin> postParseTestPlugins;
 
-    public ScriptParser() throws ParserConfigurationException {
+    public ScriptParser() throws ParserConfigurationException
+    {
         db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
         stmtParser = new StatementParser();
     }
 
-    public void setDigraph(TestDigraph digraph) {
+    public void setDigraph(TestDigraph digraph)
+    {
         this.digraph = digraph;
     }
-		
-	public void setPostParseSuitePlugins(List<IPostParseSuitePlugin> plugins) {
-		postParseSuitePlugins = plugins;
-	}
-	
-	
-	public void setPostParseTestPlugins(List<IPostParseTestPlugin> plugins) {
-		postParseTestPlugins = plugins;
-	}
-	
-    public void setCommandRegistry(CommandRegistry commandRegistry) {
+
+    public void setPostParseSuitePlugins(List<IPostParseSuitePlugin> plugins)
+    {
+        postParseSuitePlugins = plugins;
+    }
+
+    public void setPostParseTestPlugins(List<IPostParseTestPlugin> plugins)
+    {
+        postParseTestPlugins = plugins;
+    }
+
+    public void setCommandRegistry(CommandRegistry commandRegistry)
+    {
         this.commandRegistry = commandRegistry;
     }
+
     public final TestNamespace handleTestSource(File f, MessageCollector mc)
-            throws NameFormatException, SAXException, IOException, ParsingException {
-        if (!f.exists()) {
+        throws NameFormatException, SAXException, IOException, ParsingException
+    {
+        if (!f.exists())
+        {
             throw new FileNotFoundException(f.getAbsolutePath());
         }
         TestNamespace testNamespace = new TestNamespace(f.getName());
-        if (f.isDirectory() && !f.isHidden()) {
+        if (f.isDirectory() && !f.isHidden())
+        {
             ExceptionAccumulator acc = new ExceptionAccumulator();
 
-            for (File child : f.listFiles()) {
-                if (child.isDirectory()) {
-                    try {
+            for (File child : f.listFiles())
+            {
+                if (child.isDirectory())
+                {
+                    try
+                    {
                         testNamespace.add(handleTestSource(child, mc));
-                    } catch (Throwable th) {
+                    }
+                    catch (Throwable th)
+                    {
                         mc.error(th.getMessage());
                         acc.add(th);
                     }
-                } else { // It's a file
-                    try {
+                }
+                else
+                { // It's a file
+                    try
+                    {
                         TestSuite ts = handleTestSuite(child, mc);
-                        if (ts != null) {
+                        if (ts != null)
+                        {
                             testNamespace.add(ts);
                             // run all post suite parse plugins
-                            
+
                             Node suiteRootNode = (Node) (d.getDocumentElement());
                             // TODO: This needs to check for null, otherwise it
                             // crashes
-                     
-                            if (postParseSuitePlugins != null) {
-                                for (IPostParseSuitePlugin p : postParseSuitePlugins) {
-                                    if (suiteContainsTheTag(suiteRootNode, p.getTagName())) {
+
+                            if (postParseSuitePlugins != null)
+                            {
+                                for (IPostParseSuitePlugin p : postParseSuitePlugins)
+                                {
+                                    if (suiteContainsTheTag(suiteRootNode, p.getTagName()))
+                                    {
                                         p.execute(new PostSuiteParserPluginContext(commandRegistry, ts, suiteRootNode));
                                     }
                                 }
                             }
                         }
-                    } catch (Throwable th) {
+                    }
+                    catch (Throwable th)
+                    {
                         mc.error(th.getMessage());
                         acc.add(th);
                     }
                 }
             }
 
-            if (!acc.isEmpty()) {
+            if (!acc.isEmpty())
+            {
                 throw acc;
             }
         }
         return testNamespace;
     }
 
-    private boolean suiteContainsTheTag(Node suiteRootNode, String tagName) {
+    private static boolean suiteContainsTheTag(Node suiteRootNode, String tagName)
+    {
         NodeList children = suiteRootNode.getChildNodes();
-        for (int i = 0; i < children.getLength(); i++) {
-            if (children.item(i).getNodeName().equalsIgnoreCase(tagName)) {
+        for (int i = 0; i < children.getLength(); i++)
+        {
+            if (children.item(i).getNodeName().equalsIgnoreCase(tagName))
+            {
                 return true;
             }
         }
@@ -163,20 +188,27 @@ public class ScriptParser {
     }
 
     private TestSuite handleTestSuite(File f, MessageCollector mc) throws ParsingException,
-            NameFormatException, IOException {
-        if (!f.exists()) {
+        NameFormatException, IOException
+    {
+        if (!f.exists())
+        {
             throw new FileNotFoundException(f.getAbsolutePath());
         }
         TestSuite testSuite = null;
-        if (f.isFile() && f.getName().endsWith(".xml")) { // This should be a
-                                                          // TestSuite
+        if (f.isFile() && f.getName().endsWith(".xml"))
+        { // This should be a
+          // TestSuite
             mc.push("In test file " + f.getAbsolutePath());
-            try {
+            try
+            {
                 d = db.parse(f);
                 testSuite = processTestSuite(d.getDocumentElement(), mc, f.getName());
-                for (TestScript ts : processTestScripts(d.getDocumentElement(), mc)) {
-                    try {
-                        if (!digraph.addVertex(new DiNode(ts))) {
+                for (TestScript ts : processTestScripts(d.getDocumentElement(), mc))
+                {
+                    try
+                    {
+                        if (!digraph.addVertex(new DiNode(ts)))
+                        {
                             throw new DependencyException("Duplicate test name '" + ts.getName()
                                     + "' found at: "
                                     + digraph.getVertex(ts.getName()).getTestScript().getFullName());
@@ -186,74 +218,99 @@ public class ScriptParser {
                         testSuite.add(ts);
                         // run post parse test plugins
                         Node testRootNode = getTestRootNode(d.getDocumentElement(), ts);
-                        for (IPostParseTestPlugin p : postParseTestPlugins) {
-                            if (testContainsTheTag(testRootNode, p.getTagName())) {
+                        for (IPostParseTestPlugin p : postParseTestPlugins)
+                        {
+                            if (testContainsTheTag(testRootNode, p.getTagName()))
+                            {
                                 p.execute(new PostTestParserPluginContext(commandRegistry, testSuite, testRootNode));
                             }
                         }
-                    } catch (DependencyException de) {
+                    }
+                    catch (DependencyException de)
+                    {
                         mc.error(de.getMessage());
                         throw de;
-                    } catch (Throwable th) {
+                    }
+                    catch (Throwable th)
+                    {
                         mc.error(th.getMessage());
                         logger.fatal(th.getMessage());
                     }
                 }
-            } catch (SAXException e) {
+            }
+            catch (SAXException e)
+            {
                 mc.error(e.getMessage());
                 // throw e;
-            } catch (IOException e) {
+            }
+            catch (IOException e)
+            {
                 mc.error(e.getMessage());
                 throw e;
-            } finally {
+            }
+            finally
+            {
                 mc.pop();
             }
         }
         return testSuite;
     }
 
-    private boolean testContainsTheTag(Node testRootNode, String tagName) {
+    private static boolean testContainsTheTag(Node testRootNode, String tagName)
+    {
         NodeList children = testRootNode.getChildNodes();
-        for (int i = 0; i < children.getLength(); i++) {
-            if (children.item(i).getNodeName().equalsIgnoreCase(tagName)) {
+        for (int i = 0; i < children.getLength(); i++)
+        {
+            if (children.item(i).getNodeName().equalsIgnoreCase(tagName))
+            {
                 return true;
             }
         }
         return false;
     }
 
-    private Node getTestRootNode(Element documentElement, TestScript ts) {
+    private static Node getTestRootNode(Element documentElement, TestScript ts)
+    {
         NodeList list = documentElement.getElementsByTagName("test");
-        for (int i = 0; i < list.getLength(); i++) {
+        for (int i = 0; i < list.getLength(); i++)
+        {
             Node n = list.item(i);
-            if (n.getAttributes().getNamedItem("name").getNodeValue().equals(ts.getName())) {
+            if (n.getAttributes().getNamedItem("name").getNodeValue().equals(ts.getName()))
+            {
                 return n;
             }
         }
         return null;
     }
 
-    public final TestSuite processTestSuite(Element element, MessageCollector mc, String fileName)
-            throws ParsingException, NameFormatException {
+    public final static TestSuite processTestSuite(Element element, MessageCollector mc, String fileName)
+        throws ParsingException, NameFormatException
+    {
         TestSuite testSuite = new TestSuite(fileName);
-        if (element.getNodeName().equalsIgnoreCase("testsuite")) {
+        if (element.getNodeName().equalsIgnoreCase("testsuite"))
+        {
             AttributeHelper testScriptAttributeHelper = new AttributeHelper(element);
 
             String testSuiteName = null;
-            try {
+            try
+            {
                 testSuiteName = testScriptAttributeHelper.getRequiredString("name");
                 testSuite.setTestSuiteName(testSuiteName);
-            } catch (MissingAttributeException e) {
+            }
+            catch (MissingAttributeException e)
+            {
                 mc.push(e.getMessage());
                 logger.debug("Oops! Test suite has no 'name' attribute! ('" + element.toString()
                         + "')");
             }
-            
+
             testSuite.setDependencies(new Dependencies(null, null));
             testSuite.setExclusions(new Dependencies(null, null));
 
             return testSuite;
-        } else {
+        }
+        else
+        {
             UnexpectedElementException z = new UnexpectedElementException(element);
             mc.error(z.getMessage());
             throw z;
@@ -261,15 +318,20 @@ public class ScriptParser {
     }
 
     private final List<TestScript> processTestScripts(Element element, MessageCollector mc)
-            throws ParsingException {
-        if (element.getNodeName().equalsIgnoreCase("testsuite")) {
+        throws ParsingException
+    {
+        if (element.getNodeName().equalsIgnoreCase("testsuite"))
+        {
             List<TestScript> testScripts = null;
             AttributeHelper testScriptAttributeHelper = new AttributeHelper(element);
 
             String testSuiteName = null;
-            try {
+            try
+            {
                 testSuiteName = testScriptAttributeHelper.getRequiredString("name");
-            } catch (MissingAttributeException e) {
+            }
+            catch (MissingAttributeException e)
+            {
                 mc.push(e.getMessage());
                 logger.debug("Oops! Test suite hasn't 'name' attibite! ('" + element.toString()
                         + "')");
@@ -282,8 +344,10 @@ public class ScriptParser {
                     .getChildren(element);
             ArrayList<Element> tests = new ArrayList<Element>();
 
-            for (Element e : testSuiteChildren) {
-                if (e.getNodeName().equalsIgnoreCase("test")) {
+            for (Element e : testSuiteChildren)
+            {
+                if (e.getNodeName().equalsIgnoreCase("test"))
+                {
                     tests.add(e);
                 }
             }
@@ -292,7 +356,9 @@ public class ScriptParser {
             // MULTITHREADED 2012.4 Changes END
             // -------------------------------------
             return testScripts;
-        } else {
+        }
+        else
+        {
             UnexpectedElementException z = new UnexpectedElementException(element);
             mc.error(z.getMessage());
             throw z;
@@ -300,11 +366,14 @@ public class ScriptParser {
     }
 
     private List<TestScript> parseTests(List<Element> elementList, MessageCollector mc,
-            String testSuiteName) throws ExceptionAccumulator {
+        String testSuiteName) throws ExceptionAccumulator
+    {
         List<TestScript> testScripts = new ArrayList<TestScript>();
         ExceptionAccumulator acc = new ExceptionAccumulator();
-        for (Element child : elementList) {
-            try {
+        for (Element child : elementList)
+        {
+            try
+            {
                 AttributeHelper testAttributeHelper = new AttributeHelper(child);
                 String testName = testAttributeHelper.getOptionalString("name");
                 int testLoopNumber = getLoopNumber(testAttributeHelper, mc);
@@ -313,41 +382,59 @@ public class ScriptParser {
                 String sheetName = getSheetName(child);
                 List<List<String>> testData = null;
                 int tsNamefromFilePosition = -1;
-                if (testDataFile != null) {
-                    if (testDataFile.endsWith(".xlsx")) {
+                if (testDataFile != null)
+                {
+                    if (testDataFile.endsWith(".xlsx"))
+                    {
                         testData = getExcelDataFromFile(testDataFile, sheetName, mc, true);
-                    } else if (testDataFile.endsWith(".xls")) {
+                    }
+                    else if (testDataFile.endsWith(".xls"))
+                    {
                         testData = getExcelDataFromFile(testDataFile, sheetName, mc, false);
-                    } else if (testDataFile.endsWith(".csv")) {
+                    }
+                    else if (testDataFile.endsWith(".csv"))
+                    {
                         testData = getCSVDataFromFile(testDataFile, mc);
-                    } else {
+                    }
+                    else
+                    {
                         logger.fatal("Oops! can't parse test data file ('" + testDataFile
                                 + "'). Supported 'xls', 'xlsx' and 'csv' extentions.");
                     }
                     tsNamefromFilePosition = getTSNameFromDataFilePosition(testData);
                 }
 
-                for (int i = 1; i <= testLoopNumber; i++) {
+                for (int i = 1; i <= testLoopNumber; i++)
+                {
                     TestScript ts = processTestScript(child, mc);
                     ts.setTestSuiteName(testSuiteName);
 
-                    if (testData != null && testData.size() > 0) {
+                    if (testData != null && testData.size() > 0)
+                    {
                         int rowNumber = 0;
                         List<String> titleRow = null;
-                        for (List<String> row : testData) {
+                        for (List<String> row : testData)
+                        {
                             String tsNamefromFile = "";
-                            if (tsNamefromFilePosition >= 0) {
+                            if (tsNamefromFilePosition >= 0)
+                            {
                                 tsNamefromFile = "testNameFromDataFile-"
                                         + row.get(tsNamefromFilePosition);
                             }
-                            if (0 == rowNumber) {
+                            if (0 == rowNumber)
+                            {
                                 titleRow = row;
-                            } else {
-                                if (testLoopNumber != 1) {
+                            }
+                            else
+                            {
+                                if (testLoopNumber != 1)
+                                {
                                     ts.setName(testName + " [data file row #" + rowNumber
                                             + "; iteration #" + i + " of " + testLoopNumber + "]; "
                                             + tsNamefromFile);
-                                } else {
+                                }
+                                else
+                                {
                                     ts.setName(testName + " [data file row #" + rowNumber + "] ; "
                                             + tsNamefromFile);
                                 }
@@ -361,33 +448,43 @@ public class ScriptParser {
                             ts = processTestScript(child, mc);
                             ts.setTestSuiteName(testSuiteName);
                         }
-                    } else {
-                        if (testLoopNumber > 1) {
+                    }
+                    else
+                    {
+                        if (testLoopNumber > 1)
+                        {
                             ts.setName(testName + " [iteration " + i + " of " + testLoopNumber
                                     + "]");
                         }
                         testScripts.add(ts);
                     }
                 }
-            } catch (Throwable th) {
+            }
+            catch (Throwable th)
+            {
                 logger.fatal(th.getMessage());
                 mc.error(th.getMessage());
                 acc.add(th);
             }
         }
 
-        if (!acc.isEmpty()) {
+        if (!acc.isEmpty())
+        {
             throw acc;
         }
 
         return testScripts;
     }
 
-    private final String getTestDataFile(Element test) {
-        for (Element testChild : ParserHelper.getChildren(test)) {
-            if (testChild.getTagName().equalsIgnoreCase("testData")) {
+    private final static String getTestDataFile(Element test)
+    {
+        for (Element testChild : ParserHelper.getChildren(test))
+        {
+            if (testChild.getTagName().equalsIgnoreCase("testData"))
+            {
                 String file = testChild.getAttribute("file");
-                if (file != null && file.length() > 0) {
+                if (file != null && file.length() > 0)
+                {
                     return file;
                 }
             }
@@ -395,11 +492,15 @@ public class ScriptParser {
         return null;
     }
 
-    private final String getSheetName(Element test) {
-        for (Element testChild : ParserHelper.getChildren(test)) {
-            if (testChild.getTagName().equalsIgnoreCase("testData")) {
+    private final static String getSheetName(Element test)
+    {
+        for (Element testChild : ParserHelper.getChildren(test))
+        {
+            if (testChild.getTagName().equalsIgnoreCase("testData"))
+            {
                 String file = testChild.getAttribute("sheet");
-                if (file != null && file.length() > 0) {
+                if (file != null && file.length() > 0)
+                {
                     return file;
                 }
             }
@@ -407,18 +508,26 @@ public class ScriptParser {
         return null;
     }
 
-    private final List<List<String>> getExcelDataFromFile(String testDataFile, String sheetName,
-            MessageCollector mc, boolean isXlsx) {
-        if (testDataFile != null && testDataFile.length() > 0) {
+    private final static List<List<String>> getExcelDataFromFile(String testDataFile, String sheetName,
+        MessageCollector mc, boolean isXlsx)
+    {
+        if (testDataFile != null && testDataFile.length() > 0)
+        {
             ExcelFileParser excelFileParser = null;
-            try {
-                if (sheetName != null) {
+            try
+            {
+                if (sheetName != null)
+                {
                     excelFileParser = new ExcelFileParser(testDataFile, sheetName, isXlsx);
-                } else {
+                }
+                else
+                {
                     excelFileParser = new ExcelFileParser(testDataFile, isXlsx);
                 }
                 return excelFileParser.parseExcelFile(isXlsx);
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 String errorMessage = "Oops! Can't parse excel file '" + testDataFile + "'!";
                 logger.fatal(errorMessage);
                 mc.error(errorMessage);
@@ -427,44 +536,61 @@ public class ScriptParser {
         return null;
     }
 
-    private final List<List<String>> getCSVDataFromFile(String testDataFile, MessageCollector mc) {
+    private final static List<List<String>> getCSVDataFromFile(String testDataFile, MessageCollector mc)
+    {
         List<List<String>> result = new ArrayList<List<String>>();
-        CSVReader reader = null ;
-        try {
-             reader = new CSVReader(new FileReader(testDataFile));
+        CSVReader reader = null;
+        try
+        {
+            reader = new CSVReader(new FileReader(testDataFile));
             List<String> nextLine;
 
-            while ((nextLine = StringHelper.ArrayToList(reader.readNext())) != null) {
+            while ((nextLine = StringHelper.ArrayToList(reader.readNext())) != null)
+            {
                 if ((nextLine != null) && (nextLine.size() > 0)
-                        && (!nextLine.get(0).startsWith("#"))) {
+                        && (!nextLine.get(0).startsWith("#")))
+                {
                     result.add(nextLine);
                 }
             }
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             logger.fatal("Oops! Can't open file '" + testDataFile + "'!");
             return null;
-        }finally{
-        	if(reader!=null){
-        		try{
-        		reader.close();
-        		}catch(Exception e){
-        			//Dont care
+        }
+        finally
+        {
+            if (reader != null)
+            {
+                try
+                {
+                    reader.close();
+                }
+                catch (Exception e)
+                {
+                    // Dont care
                     logger.fatal("Oops! Can't close file '" + testDataFile + "'!");
 
-        		}
-        	}
+                }
+            }
         }
         return result;
     }
 
-    private final int getLoopNumber(AttributeHelper testAttributeHelper, MessageCollector mc) {
+    private final static int getLoopNumber(AttributeHelper testAttributeHelper, MessageCollector mc)
+    {
         String testLoop = testAttributeHelper.getOptionalString("loop");
         int testLoopNumber = 1;
-        if (testLoop != null) {
-            try {
+        if (testLoop != null)
+        {
+            try
+            {
                 testLoopNumber = Integer.parseInt(testLoop);
                 return testLoopNumber;
-            } catch (java.lang.NumberFormatException e) {
+            }
+            catch (java.lang.NumberFormatException e)
+            {
                 String errorMessage = "Oops! Can't parse test 'loop' property ('"
                         + testLoop
                         + "'). It has be number like '3'. This parameter means number of execution for this test. Fix your test case script, please!";
@@ -483,14 +609,21 @@ public class ScriptParser {
     // once this method executes, the testscript is added to a list of
     // testscripts.
     // so each row of data is effectively a new test script
-    private void setTestDataToTestScript(List<String> title, List<String> data, TestScript ts) {
-        for (Invocation statement : ts.getBody()) {
-            if (statement instanceof Invocation) {
+    private static void setTestDataToTestScript(List<String> title, List<String> data, TestScript ts)
+    {
+        for (Invocation statement : ts.getBody())
+        {
+            if (statement instanceof Invocation)
+            {
                 Map<String, Object> parameters = ((Invocation) statement).getParameters();
-                for (int i = 0; i < title.size(); i++) {
-                    if (i < data.size()) {
+                for (int i = 0; i < title.size(); i++)
+                {
+                    if (i < data.size())
+                    {
                         parameters.put(title.get(i), data.get(i));
-                    } else {
+                    }
+                    else
+                    {
                         parameters.put(title.get(i), "");
                     }
                 }
@@ -515,35 +648,44 @@ public class ScriptParser {
     }
 
     public final TestScript processTestScript(Element elem, MessageCollector mc)
-            throws ParsingException {
+        throws ParsingException
+    {
         preprocessTestScript(ParserHelper.getRequireElement(elem, "teststeps"), mc);
 
         AttributeHelper ah = new AttributeHelper(elem);
         String name = null;
-        try {
+        try
+        {
             name = ah.getRequiredString("name");
-        } catch (MissingAttributeException e) {
+        }
+        catch (MissingAttributeException e)
+        {
             mc.push(e.getMessage());
             throw e;
         }
 
         boolean isCaptureSystemInformation = false;
         String isCaptureSystemInformationStr = ah.getOptionalString("isCaptureSystemInformation");
-        if (isCaptureSystemInformationStr != null) {
+        if (isCaptureSystemInformationStr != null)
+        {
             if (isCaptureSystemInformationStr.equalsIgnoreCase("true")
                     || isCaptureSystemInformationStr.equalsIgnoreCase("1")
-                    || isCaptureSystemInformationStr.equalsIgnoreCase("yes")) {
+                    || isCaptureSystemInformationStr.equalsIgnoreCase("yes"))
+            {
                 isCaptureSystemInformation = true;
-            } else if (!isCaptureSystemInformationStr.equalsIgnoreCase("false")
+            }
+            else if (!isCaptureSystemInformationStr.equalsIgnoreCase("false")
                     && !isCaptureSystemInformationStr.equalsIgnoreCase("0")
-                    && !isCaptureSystemInformationStr.equalsIgnoreCase("no")) {
+                    && !isCaptureSystemInformationStr.equalsIgnoreCase("no"))
+            {
                 logger.fatal("Oops! Can't parse '"
                         + isCaptureSystemInformationStr
                         + "'. It can be only one of 'true'/'false', '1'/'0' or 'yes'/'no'. Fix your test script, please!..");
             }
         }
 
-        try {
+        try
+        {
             mc.push("In test " + name);
             TestScript testScript = new TestScript(name, isCaptureSystemInformation);
             testScript.setBody(stmtParser.processStatementList(ParserHelper.getRequireElement(elem,
@@ -556,11 +698,16 @@ public class ScriptParser {
             Set<String> dependentListTests = new HashSet<String>();
             Set<String> dependentListTestSuites = new HashSet<String>();
 
-            if (dependentElement != null) {
-                for (Element e : ParserHelper.getChildren(dependentElement)) {
-                    if (e.getNodeName().equalsIgnoreCase("test")) {
+            if (dependentElement != null)
+            {
+                for (Element e : ParserHelper.getChildren(dependentElement))
+                {
+                    if (e.getNodeName().equalsIgnoreCase("test"))
+                    {
                         dependentListTests.add(new AttributeHelper(e).getRequiredString("name"));
-                    } else if (e.getNodeName().equalsIgnoreCase("testsuite")) {
+                    }
+                    else if (e.getNodeName().equalsIgnoreCase("testsuite"))
+                    {
                         dependentListTestSuites.add(new AttributeHelper(e)
                                 .getRequiredString("name"));
                     }
@@ -571,11 +718,16 @@ public class ScriptParser {
                     "exclusions");
             Set<String> excludedListTests = new HashSet<String>();
             Set<String> excludedListTestSuites = new HashSet<String>();
-            if (exclusionElement != null) {
-                for (Element e : ParserHelper.getChildren(exclusionElement)) {
-                    if (e.getNodeName().equalsIgnoreCase("test")) {
+            if (exclusionElement != null)
+            {
+                for (Element e : ParserHelper.getChildren(exclusionElement))
+                {
+                    if (e.getNodeName().equalsIgnoreCase("test"))
+                    {
                         excludedListTests.add(new AttributeHelper(e).getRequiredString("name"));
-                    } else if (e.getNodeName().equalsIgnoreCase("testsuite")) {
+                    }
+                    else if (e.getNodeName().equalsIgnoreCase("testsuite"))
+                    {
                         excludedListTestSuites
                                 .add(new AttributeHelper(e).getRequiredString("name"));
                     }
@@ -588,7 +740,8 @@ public class ScriptParser {
             testScript.setTestCaseID(ah.getOptionalString("testcaseid"));
 
             Element issuesElem = ParserHelper.getOptionalElement(elem, "issues");
-            if (issuesElem != null) {
+            if (issuesElem != null)
+            {
                 testScript.setIssue(processIssue(issuesElem));
                 testScript.setCRs(processCRs(issuesElem));
             }
@@ -597,27 +750,32 @@ public class ScriptParser {
 
             Element avElem = ParserHelper.getFirstChildElementCaseInsensitive(elem,
                     "automationvalue");
-            if (avElem != null) {
-            	// not sure why this doesn't just call avElem.getTextContent()
+            if (avElem != null)
+            {
+                // not sure why this doesn't just call avElem.getTextContent()
                 testScript.setAutomationValue(stmtParser.processString(avElem, mc).toString());
             }
 
             // TODO: Should we make this into a list?
             // retval.getRequirements() = new
             Element covElem = ParserHelper.getOptionalElement(elem, "coverage");
-            if (covElem != null) {
+            if (covElem != null)
+            {
 
                 // Requirement List
                 List<Element> children = ParserHelper.getChildren(covElem);
                 ArrayList<Requirement> requirements = new ArrayList<Requirement>();
                 StringBuffer coverage = new StringBuffer();
-                if (!children.isEmpty()) {
-                    for (Element child : children) {
+                if (!children.isEmpty())
+                {
+                    for (Element child : children)
+                    {
                         Requirement requirement = new Requirement();
                         String type = child.getAttribute("type");
                         String value = child.getTextContent();
 
-                        if (!type.equals("")) {
+                        if (!type.equals(""))
+                        {
                             requirement.setType(child.getAttribute("type"));
                             requirement.setValue(value.trim());
                             requirements.add(requirement);
@@ -628,35 +786,45 @@ public class ScriptParser {
                     }
                     testScript.setRequirements(requirements);
                     testScript.setCoverage(coverage.substring(0, coverage.length() - 1));
-                } else {
+                }
+                else
+                {
                     testScript.setCoverage(stmtParser.processString(covElem, mc).toString().trim());
                 }
             }
 
             Element descElem = ParserHelper.getOptionalElement(elem, "desc");
-            if (descElem != null) {
+            if (descElem != null)
+            {
                 testScript.setDescription(stmtParser.processString(descElem, mc).toString());
             }
 
             return testScript;
-        } catch (NameFormatException e) {
+        }
+        catch (NameFormatException e)
+        {
             mc.error(e.getMessage());
             throw new ParsingException(e);
-        } finally {
+        }
+        finally
+        {
             mc.pop();
         }
     }
 
-    private final void preprocessTestScript(Element elem, MessageCollector mc) {
+    private final static void preprocessTestScript(Element elem, MessageCollector mc)
+    {
         List<Element> children = ParserHelper.getChildren(elem);
-        if (children.isEmpty()) {
+        if (children.isEmpty())
+        {
             return;
         }
 
         // If we detect a Teardown command, then we need to create
         // a Try...Cleanup block
         final Element last = children.get(children.size() - 1);
-        if (last.getNodeName().equalsIgnoreCase("teardown")) {
+        if (last.getNodeName().equalsIgnoreCase("teardown"))
+        {
             final Element safety = elem.getOwnerDocument().createElement("TryRecoverCleanup");
             final Element tryBlock = elem.getOwnerDocument().createElement("try");
             final Element cleanupBlock = elem.getOwnerDocument().createElement("cleanup");
@@ -664,26 +832,31 @@ public class ScriptParser {
             safety.appendChild(tryBlock);
             safety.appendChild(cleanupBlock);
 
-            for (int i = 0, max = children.size() - 1; i < max; ++i) {
+            for (int i = 0, max = children.size() - 1; i < max; ++i)
+            {
                 Element next = children.get(i);
                 elem.removeChild(next);
                 tryBlock.appendChild(next);
             }
 
             elem.removeChild(last);
-            for (Element e : ParserHelper.getChildren(last)) {
+            for (Element e : ParserHelper.getChildren(last))
+            {
                 cleanupBlock.appendChild(e);
             }
             elem.appendChild(safety);
         }
     }
 
-    private final String processIssue(Element elem) {
+    private final static String processIssue(Element elem)
+    {
         String retval = "";
         NodeList nl = elem.getChildNodes();
-        for (int i = 0; i < nl.getLength(); ++i) {
+        for (int i = 0; i < nl.getLength(); ++i)
+        {
             Node n = nl.item(i);
-            if (n.getNodeType() == Node.TEXT_NODE) {
+            if (n.getNodeType() == Node.TEXT_NODE)
+            {
                 retval += n.getNodeValue();
             }
         }
@@ -694,10 +867,13 @@ public class ScriptParser {
             return null;
     }
 
-    private final List<String> processCRs(Element elem) {
+    private final static List<String> processCRs(Element elem)
+    {
         List<String> retval = new ArrayList<String>();
-        for (Element child : ParserHelper.getChildren(elem)) {
-            if (child.getNodeName().equalsIgnoreCase("cr")) {
+        for (Element child : ParserHelper.getChildren(elem))
+        {
+            if (child.getNodeName().equalsIgnoreCase("cr"))
+            {
                 String crNumber = child.getAttribute("no");
                 retval.add(crNumber);
             }
@@ -705,16 +881,22 @@ public class ScriptParser {
         return retval;
     }
 
-    private int getTSNameFromDataFilePosition(List<List<String>> testData) {
+    private static int getTSNameFromDataFilePosition(List<List<String>> testData)
+    {
         // try to findout 'JTAF.test.name' column. Value from this column
         // necessary to add to ts name.
-        if (testData != null && testData.size() > 0) {
+        if (testData != null && testData.size() > 0)
+        {
             List<String> firstLine = testData.get(0);
             int pos = 0;
-            for (String firstLineItem : firstLine) {
-                if (firstLineItem != null && firstLineItem.equalsIgnoreCase("JTAF.test.name")) {
+            for (String firstLineItem : firstLine)
+            {
+                if (firstLineItem != null && firstLineItem.equalsIgnoreCase("JTAF.test.name"))
+                {
                     return pos;
-                } else {
+                }
+                else
+                {
                     pos++;
                 }
             }

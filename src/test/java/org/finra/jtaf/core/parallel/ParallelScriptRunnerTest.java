@@ -19,13 +19,15 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-public class ParallelScriptRunnerTest {
+public class ParallelScriptRunnerTest
+{
 
     private TestScript testScript = null;
     private ParallelScriptRunner runner = null;
 
     @Test
-    public void testCreateJunitName() throws Exception {
+    public void testCreateJunitName() throws Exception
+    {
         Node testRoot = buildTestRoot("testscripts/ManipulateContextHelper.xml", "Manipulate");
         TestSuite testSuite = buildTestSuite(testRoot);
 
@@ -66,57 +68,69 @@ public class ParallelScriptRunnerTest {
     }
 
     @Test
-    public void testRunJtafTestScript() throws Throwable {
+    public void testRunJtafTestScript() throws Throwable
+    {
         Node testRoot = buildTestRoot("testscripts/ParallelScriptRunner.xml", "Runner");
         TestSuite testSuite = buildTestSuite(testRoot);
 
         List<TestComponent> componentList = testSuite.getComponentList();
         testScript = (TestScript) componentList.get(0);
-        if (AutomationEngine.getInstance().getTestDigraph().getVertex(testScript.getName()) != null) {
+        if (AutomationEngine.getInstance().getTestDigraph().getVertex(testScript.getName()) != null)
+        {
             AutomationEngine.getInstance().getTestDigraph().updateTestStatus(testScript.getName(),
                     "FAILED");
 
-        } else {
+        }
+        else
+        {
             MyNode node = new MyNode(testScript);
             node.setTestStatus("FAILED");
 
             AutomationEngine.getInstance().getTestDigraph().addVertex(node);
         }
-      
+
         runner = new ParallelScriptRunner(testScript);
 
         Throwable error = null;
-        try {
+        try
+        {
             runner.runJtafTestScript();
-        } catch (Throwable e) {
+        }
+        catch (Throwable e)
+        {
             error = e;
         }
         Assert.assertTrue(error.getClass().getSimpleName().equals("AssertionError"));
         Assert.assertTrue(error.getMessage().equals("One or more Dependent tests failed"));
-        
-        
+
         AutomationEngine.getInstance().getTestDigraph().updateTestStatus(testScript.getName(),
                 "SUCCESS");
-        try {
+        try
+        {
             runner.runJtafTestScript();
-        } catch (Throwable e) {
+        }
+        catch (Throwable e)
+        {
             error = e;
         }
         Assert.assertTrue(error.getClass().getSimpleName().equals("AssertionFailedError"));
 
     }
 
-    protected Node buildTestRoot(String scriptFileName, String testOfInterestName) throws Exception {
+    protected Node buildTestRoot(String scriptFileName, String testOfInterestName) throws Exception
+    {
         Node testRoot = null;
         InputStream inputStream = new FileInputStream(scriptFileName);
         Node suiteNode = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(
                 inputStream).getDocumentElement();
         NodeList suiteNodeChildNodes = suiteNode.getChildNodes();
-        for (int suiteNodeChildIndex = 0; suiteNodeChildIndex < suiteNodeChildNodes.getLength(); suiteNodeChildIndex++) {
+        for (int suiteNodeChildIndex = 0; suiteNodeChildIndex < suiteNodeChildNodes.getLength(); suiteNodeChildIndex++)
+        {
             Node suiteNodeChildNode = suiteNodeChildNodes.item(suiteNodeChildIndex);
             if (suiteNodeChildNode.getNodeName().equalsIgnoreCase("test")
                     && suiteNodeChildNode.getAttributes().getNamedItem("name").getTextContent()
-                            .equals(testOfInterestName)) {
+                            .equals(testOfInterestName))
+            {
                 testRoot = suiteNodeChildNode;
                 break;
             }
@@ -124,7 +138,8 @@ public class ParallelScriptRunnerTest {
         return testRoot;
     }
 
-    protected TestSuite buildTestSuite(Node testRoot) throws Exception {
+    protected TestSuite buildTestSuite(Node testRoot) throws Exception
+    {
         TestSuite testSuite = new TestSuite("dummy test suite");
         TestScript testScript = AutomationEngine.getInstance().getScriptParser().processTestScript(
                 (Element) testRoot, new MessageCollector());
@@ -132,7 +147,8 @@ public class ParallelScriptRunnerTest {
         return testSuite;
     }
 
-    private class MyNode extends DiNode {
+    private class MyNode extends DiNode
+    {
 
         private String testName = ""; // This shouldnt change after being set
                                       // initially
@@ -140,25 +156,34 @@ public class ParallelScriptRunnerTest {
         private TestScript testScript = null; // This shouldnt change after
                                               // being set initially
 
-        public MyNode(TestScript ts) {
+        public MyNode(TestScript ts)
+        {
             super(ts);
             this.testName = ts.getName();
             this.testScript = ts;
         }
 
-        public String getTestStatus() {
+        @Override
+        public String getTestStatus()
+        {
             return testStatus;
         }
 
-        protected void setTestStatus(String newTestStatus) {
+        @Override
+        protected void setTestStatus(String newTestStatus)
+        {
             testStatus = newTestStatus;
         }
 
-        public String getTestName() {
+        @Override
+        public String getTestName()
+        {
             return testName;
         }
 
-        public TestScript getTestScript() {
+        @Override
+        public TestScript getTestScript()
+        {
             return testScript;
         }
     }
