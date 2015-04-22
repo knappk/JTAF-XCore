@@ -1,17 +1,18 @@
 /*
  * (C) Copyright 2014 Java Test Automation Framework Contributors.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
- * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * 
  */
 package org.finra.jtaf.core.parsing;
 
@@ -45,228 +46,229 @@ import au.com.bytecode.opencsv.CSVReader;
  */
 public class TestDataPlugin implements IPostParseTestPlugin
 {
-    protected TestDigraph testDigraph;
+	protected TestDigraph testDigraph;
+	
+	public TestDataPlugin(AutomationEngine automationEngine)
+	{
+		this.testDigraph = automationEngine.getTestDigraph();
+	}
+	
+	@Override
+	public String getTagName()
+	{
+		return "testdata";
+	}
 
-    public TestDataPlugin(AutomationEngine automationEngine)
-    {
-        this.testDigraph = automationEngine.getTestDigraph();
-    }
+	@Override
+	public void execute(PostTestParserPluginContext ctx) throws ParserPluginException
+	{
+		String testDataFile = getTestDataAttribute(ctx, "file");
+		String testDataSheet = getTestDataAttribute(ctx, "sheet");
+		List<List<String>> testData = getTestData(testDataFile, testDataSheet);
+		int tsNamefromFilePosition = getTSNameFromDataFilePosition(testData);
 
-    @Override
-    public String getTagName()
-    {
-        return "testdata";
-    }
+		List<TestComponent> testComponents = ctx.getTestSuite().getComponentList();
+		testComponents.remove(testComponents.size() - 1);
+		for(int testDataRow = 1; testDataRow < testData.size(); testDataRow++)
+		{
+//			TestScript ts = null;
+			TestScript ts = reparseScript(ctx);
+			renameScript(ts, tsNamefromFilePosition, testData.get(testDataRow), testDataRow);
+			
+			setTestDataToTestScript(testData.get(0), testData.get(testDataRow), ts);
+			
+			addToSuite(ctx, ts);
+			
 
-    @Override
-    public void execute(PostTestParserPluginContext ctx) throws ParserPluginException
-    {
-        String testDataFile = getTestDataAttribute(ctx, "file");
-        String testDataSheet = getTestDataAttribute(ctx, "sheet");
-        List<List<String>> testData = getTestData(testDataFile, testDataSheet);
-        int tsNamefromFilePosition = getTSNameFromDataFilePosition(testData);
+//			DigraphPlugin dependenciesPlugin = DigraphPlugin.getInstance();
+//			TestDigraph testDigraph = dependenciesPlugin.getTestDigraph();
+			testDigraph.addVertex(new DiNode(ts));
+		}
+	}
 
-        List<TestComponent> testComponents = ctx.getTestSuite().getComponentList();
-        testComponents.remove(testComponents.size() - 1);
-        for (int testDataRow = 1; testDataRow < testData.size(); testDataRow++)
-        {
-            // TestScript ts = null;
-            TestScript ts = reparseScript(ctx);
-            renameScript(ts, tsNamefromFilePosition, testData.get(testDataRow), testDataRow);
+	private String getTestDataAttribute(PostTestParserPluginContext ctx, String attributeName)
+	{
+		NodeList children = ctx.getRootNodeTest().getChildNodes();
+		String result = null;
 
-            setTestDataToTestScript(testData.get(0), testData.get(testDataRow), ts);
+		for(int i = 0; i < children.getLength(); i++)
+		{
+			if(children.item(i).getNodeName().equalsIgnoreCase("testData"))
+			{
+				Node attribute = children.item(i).getAttributes().getNamedItem(attributeName);
+				if(attribute == null)
+					continue;
+				result = attribute.getNodeValue();
+			}
+		}
 
-            addToSuite(ctx, ts);
+		return result;
+	}
 
-            // DigraphPlugin dependenciesPlugin = DigraphPlugin.getInstance();
-            // TestDigraph testDigraph = dependenciesPlugin.getTestDigraph();
-            testDigraph.addVertex(new DiNode(ts));
-        }
-    }
+	private List<List<String>> getTestData(String file, String sheet) throws ParserPluginException
+	{
+		if(file.endsWith(".xlsx"))
+		{
+			return getExcelDataFromFile(file, sheet, true);
+		}
 
-    private static String getTestDataAttribute(PostTestParserPluginContext ctx, String attributeName)
-    {
-        NodeList children = ctx.getRootNodeTest().getChildNodes();
-        String result = null;
+		if(file.endsWith(".xls"))
+		{
+			return getExcelDataFromFile(file, sheet, false);
+		}
 
-        for (int i = 0; i < children.getLength(); i++)
-        {
-            if (children.item(i).getNodeName().equalsIgnoreCase("testData"))
-            {
-                Node attribute = children.item(i).getAttributes().getNamedItem(attributeName);
-                if (attribute == null)
-                    continue;
-                result = attribute.getNodeValue();
-            }
-        }
+		if(file.endsWith(".csv"))
+		{
+			return getCSVDataFromFile(file);
+		}
 
-        return result;
-    }
+		throw new ParserPluginException("Oops! can't parse test data file ('" + file + "'). Supported 'xls', 'xlsx' and 'csv' extentions.");
+	}
 
-    private static List<List<String>> getTestData(String file, String sheet) throws ParserPluginException
-    {
-        if (file.endsWith(".xlsx"))
-        {
-            return getExcelDataFromFile(file, sheet, true);
-        }
+	private int getTSNameFromDataFilePosition(List<List<String>> testData)
+	{
+		// try to findout 'JTAF.test.name' column. Value from this column
+		// necessary to add to ts name.
+		if(testData != null && testData.size() > 0)
+		{
+			List<String> firstLine = testData.get(0);
+			int pos = 0;
+			for(String firstLineItem : firstLine)
+			{
+				if(firstLineItem != null && firstLineItem.equalsIgnoreCase("JTAF.test.name"))
+				{
+					return pos;
+				}
+				else
+				{
+					pos++;
+				}
+			}
+		}
+		return -1;
+	}
 
-        if (file.endsWith(".xls"))
-        {
-            return getExcelDataFromFile(file, sheet, false);
-        }
+	private final List<List<String>> getExcelDataFromFile(String testDataFile, String sheetName, boolean isXlsx) throws ParserPluginException
+	{
+		if(testDataFile != null && testDataFile.length() > 0)
+		{
+			ExcelFileParser excelFileParser = null;
+			try
+			{
+				if(sheetName != null)
+				{
+					excelFileParser = new ExcelFileParser(testDataFile, sheetName, isXlsx);
+				}
+				else
+				{
+					excelFileParser = new ExcelFileParser(testDataFile, isXlsx);
+				}
+				return excelFileParser.parseExcelFile(isXlsx);
+			}
+			catch(Exception e)
+			{
+				throw new ParserPluginException("Oops! Can't parse excel file '" + testDataFile + "'!");
+			}
+		}
+		return null;
+	}
 
-        if (file.endsWith(".csv"))
-        {
-            return getCSVDataFromFile(file);
-        }
+	private List<List<String>> getCSVDataFromFile(String file) throws ParserPluginException
+	{
+		List<List<String>> result = new ArrayList<List<String>>();
+		CSVReader reader = null;
+		try
+		{
+			reader = new CSVReader(new FileReader(file));
+			List<String> nextLine;
 
-        throw new ParserPluginException("Oops! can't parse test data file ('" + file + "'). Supported 'xls', 'xlsx' and 'csv' extentions.");
-    }
+			while ((nextLine = StringHelper.ArrayToList(reader.readNext())) != null)
+			{
+				if((nextLine != null) && (nextLine.size() > 0) && (!nextLine.get(0).startsWith("#")))
+				{
+					result.add(nextLine);
+				}
+			}
+		}
+		catch(Exception exception)
+		{
+			throw new ParserPluginException("Oops! Can't open file '" + file + "'!", exception);
+		}
+		finally
+		{
+			try
+			{
+				if(reader != null)
+					reader.close();
+			}
+			catch(IOException ioException)
+			{
+				throw new ParserPluginException("Problem closing CSVReader", ioException);
+			}
+		}
+		return result;
+	}
 
-    private static int getTSNameFromDataFilePosition(List<List<String>> testData)
-    {
-        // try to findout 'JTAF.test.name' column. Value from this column
-        // necessary to add to ts name.
-        if (testData != null && testData.size() > 0)
-        {
-            List<String> firstLine = testData.get(0);
-            int pos = 0;
-            for (String firstLineItem : firstLine)
-            {
-                if (firstLineItem != null && firstLineItem.equalsIgnoreCase("JTAF.test.name"))
-                {
-                    return pos;
-                }
-                else
-                {
-                    pos++;
-                }
-            }
-        }
-        return -1;
-    }
+	private TestScript reparseScript(PostTestParserPluginContext ctx) throws ParserPluginException
+	{
+		ScriptParser sp = AutomationEngine.getInstance().getScriptParser();
+		try
+		{
+			return sp.processTestScript((Element) ctx.getRootNodeTest(), new MessageCollector());
+		}
+		catch(Exception exception)
+		{
+			throw new ParserPluginException(exception);
+		}
+	}
 
-    private final static List<List<String>> getExcelDataFromFile(String testDataFile, String sheetName, boolean isXlsx) throws ParserPluginException
-    {
-        if (testDataFile != null && testDataFile.length() > 0)
-        {
-            ExcelFileParser excelFileParser = null;
-            try
-            {
-                if (sheetName != null)
-                {
-                    excelFileParser = new ExcelFileParser(testDataFile, sheetName, isXlsx);
-                }
-                else
-                {
-                    excelFileParser = new ExcelFileParser(testDataFile, isXlsx);
-                }
-                return excelFileParser.parseExcelFile(isXlsx);
-            }
-            catch (Exception e)
-            {
-                throw new ParserPluginException("Oops! Can't parse excel file '" + testDataFile + "'!");
-            }
-        }
-        return null;
-    }
+	private void addToSuite(PostTestParserPluginContext ctx, TestScript ts) throws ParserPluginException
+	{
+		try
+		{
+			ctx.getTestSuite().add(ts);
+		}
+		catch(NameCollisionException nameCollisionException)
+		{
+			throw new ParserPluginException(nameCollisionException);
+		}
+	}
 
-    private static List<List<String>> getCSVDataFromFile(String file) throws ParserPluginException
-    {
-        List<List<String>> result = new ArrayList<List<String>>();
-        CSVReader reader = null;
-        try
-        {
-            reader = new CSVReader(new FileReader(file));
-            List<String> nextLine;
+	private void setTestDataToTestScript(List<String> title, List<String> data, TestScript ts)
+	{
+		for(Invocation statement : ts.getBody())
+		{
+			if(statement instanceof Invocation)
+			{
+				Map<String, Object> parameters = ((Invocation) statement).getParameters();
+				for(int i = 0; i < title.size(); i++)
+				{
+					if(i < data.size())
+					{
+						parameters.put(title.get(i), data.get(i));
+					}
+					else
+					{
+						parameters.put(title.get(i), "");
+					}
+				}
+			}
+		}
+	}
 
-            while ((nextLine = StringHelper.ArrayToList(reader.readNext())) != null)
-            {
-                if ((nextLine != null) && (nextLine.size() > 0) && (!nextLine.get(0).startsWith("#")))
-                {
-                    result.add(nextLine);
-                }
-            }
-        }
-        catch (Exception exception)
-        {
-            throw new ParserPluginException("Oops! Can't open file '" + file + "'!", exception);
-        }
-        finally
-        {
-            try
-            {
-                if (reader != null)
-                    reader.close();
-            }
-            catch (IOException ioException)
-            {
-                throw new ParserPluginException("Problem closing CSVReader", ioException);
-            }
-        }
-        return result;
-    }
-
-    private static TestScript reparseScript(PostTestParserPluginContext ctx) throws ParserPluginException
-    {
-        ScriptParser sp = AutomationEngine.getInstance().getScriptParser();
-        try
-        {
-            return sp.processTestScript((Element) ctx.getRootNodeTest(), new MessageCollector());
-        }
-        catch (Exception exception)
-        {
-            throw new ParserPluginException(exception);
-        }
-    }
-
-    private static void addToSuite(PostTestParserPluginContext ctx, TestScript ts) throws ParserPluginException
-    {
-        try
-        {
-            ctx.getTestSuite().add(ts);
-        }
-        catch (NameCollisionException nameCollisionException)
-        {
-            throw new ParserPluginException(nameCollisionException);
-        }
-    }
-
-    private static void setTestDataToTestScript(List<String> title, List<String> data, TestScript ts)
-    {
-        for (Invocation statement : ts.getBody())
-        {
-            if (statement instanceof Invocation)
-            {
-                Map<String, Object> parameters = ((Invocation) statement).getParameters();
-                for (int i = 0; i < title.size(); i++)
-                {
-                    if (i < data.size())
-                    {
-                        parameters.put(title.get(i), data.get(i));
-                    }
-                    else
-                    {
-                        parameters.put(title.get(i), "");
-                    }
-                }
-            }
-        }
-    }
-
-    private static void renameScript(TestScript ts, int tsNamefromFilePosition, List<String> row, int rowNumber)
-    {
-        // TODO Auto-generated method stub
-
-        String tsNamefromFile = "";
-        if (tsNamefromFilePosition >= 0)
-        {
-            tsNamefromFile = "testNameFromDataFile-" + row.get(tsNamefromFilePosition);
-        }
-
-        String newName = ts.getName();
-        newName += " [data file row #" + rowNumber + "] ; " + tsNamefromFile;
-
-        ts.setName(newName);
-    }
+	private void renameScript(TestScript ts, int tsNamefromFilePosition, List<String> row, int rowNumber)
+	{
+		// TODO Auto-generated method stub
+		
+		String tsNamefromFile = "";
+		if(tsNamefromFilePosition >= 0)
+		{
+			tsNamefromFile = "testNameFromDataFile-" + row.get(tsNamefromFilePosition);
+		}
+		
+		String newName = ts.getName();
+		newName += " [data file row #" + rowNumber + "] ; " + tsNamefromFile;
+		
+		ts.setName(newName);
+	}
 }
