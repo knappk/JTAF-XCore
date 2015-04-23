@@ -86,6 +86,11 @@ public class PropertyManager
      */
     protected static String generatePrefix()
     {
+        if (preexistingPrefixes == null)
+        {
+            preexistingPrefixes = new TreeSet<String>();
+        }
+
         int maxlength = 6;
         Random r = new Random();
         String toReturn = "" + (char) (r.nextInt(26) + 97);

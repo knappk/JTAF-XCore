@@ -44,7 +44,7 @@ public class MassPropertyManager extends PropertyManager
             if (propKey.startsWith(propertyPrefix) && propKey.endsWith(propertySuffix))
             {
                 // +1 for the ., +1 to reach the next string
-                toReturn.add(propKey.substring(propertyPrefix.length() + 2, propKey.lastIndexOf("." + propertySuffix)));
+                toReturn.add(propKey.substring(propertyPrefix.length() + 1, propKey.lastIndexOf("." + propertySuffix)));
             }
         }
         return toReturn;
