@@ -221,4 +221,17 @@ public class PropertyManager
         }
         return toReturn;
     }
+
+    /**
+     * 
+     */
+    public String getPropertyWithParams(String propertyName, String... params)
+    {
+        String toMessWith = getProperty(propertyName);
+        for (int ii = 0; toMessWith != null && ii < params.length && toMessWith.contains("{" + ii + "}"); ii++)
+        {
+            toMessWith = toMessWith.replace("{" + ii + "}", params[ii]);
+        }
+        return toMessWith;
+    }
 }
