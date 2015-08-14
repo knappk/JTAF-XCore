@@ -81,14 +81,15 @@ public class MassPropertyManager extends PropertyManager
      */
     public Set<String> getInfixesWithSuffixValue(String propertySuffix, String propertyValue)
     {
-        Set<String> matchingInfixes = getInfixesWithSuffix(propertySuffix);
-        for (String infix : matchingInfixes)
+        Set<String> allInfixes = getInfixesWithSuffix(propertySuffix);
+        Set<String> toReturn = new TreeSet<String>();
+        for (String infix : allInfixes)
         {
-            if (!getProperty(infix, propertySuffix).equals(propertyValue))
+            if (getProperty(infix, propertySuffix).equals(propertyValue))
             {
-                matchingInfixes.remove(infix);
+                toReturn.add(infix);
             }
         }
-        return matchingInfixes;
+        return toReturn;
     }
 }
